@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<layout class="ch.qos.logback.classic.PatternLayout">
+			<pattern>
+				%d{yyyy-MM-dd HH:mm:ss}  [%X{traceId:-}] [%X{spanId:-}] %5p %c{1} - %m%n
+			</pattern>
+		</layout>
+	</appender>
+	<appender name="STDOUT-ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+		<queueSize>1000000</queueSize>
+		<discardingThreshold>0</discardingThreshold>
+		<appender-ref ref="STDOUT" />
+	</appender>
+	<appender name="fast-kafka-appender" class="com.github.danielwegener.logback.kafka.KafkaAppender">
+		<encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+			<providers>
+				<mdc />
+				<context />
+				<logLevel />
+				<loggerName />
+
+				<pattern>
+					<pattern>
+						{
+						"service": "${APP_SERVICE_NAME}",
+						"X-B3-TraceId": "%X{traceId:-}",
+						"X-B3-SpanId": "%X{spanId:-}"
+						}
+					</pattern>
+				</pattern>
+
+				<threadName />
+				<message />
+				<logstashMarkers />
+				<stackTrace />
+			</providers>
+		</encoder>
+
+		<topic>${KAFKA_LOG_TOPIC}</topic>
+		<keyingStrategy class="com.github.danielwegener.logback.kafka.keying.NoKeyKeyingStrategy" />
+		<deliveryStrategy class="com.github.danielwegener.logback.kafka.delivery.AsynchronousDeliveryStrategy" />
+
+		<producerConfig>bootstrap.servers=${KAFKA_LOG_SERVER}</producerConfig>
+		<producerConfig>acks=0</producerConfig>
+		<producerConfig>linger.ms=100</producerConfig>
+		<producerConfig>max.block.ms=100</producerConfig>
+		<producerConfig>client.id=${HOSTNAME}-${CONTEXT_NAME}-logback-relaxed</producerConfig>
+
+	</appender>
+	<root level="INFO">
+		<appender-ref ref="fast-kafka-appender"/>
+		<appender-ref ref="STDOUT-ASYNC" />
+	</root>
+
+
+</configuration>
